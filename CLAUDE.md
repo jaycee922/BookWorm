@@ -3,15 +3,24 @@
 Netflix-style book discovery app: browse Google Books, keep a private library, post public reading logs.
 
 ## Stack (do not substitute)
-- Frontend: Vite + React (JavaScript) + React Router DOM, plain CSS, Lucide React icons — in `bookworm/`
+- Frontend: Vite + React (JavaScript) + React Router DOM, plain CSS, Lucide React icons — in `front-end/`
 - Backend: Supabase (Postgres, Auth email/password, PostgREST via supabase-js, Edge Functions) — in `supabase/`
 - Books data: Google Books API, **only** via the `books` Edge Function
-- Hosting: Vercel (root directory `bookworm/`); source control: Git/GitHub
+- Hosting: Vercel (root directory `front-end/`); source control: Git/GitHub
 - Not allowed: Next.js, Firebase, MongoDB, Express, Realtime/WebSockets, Redis or other caching layers, mock data, localStorage as a backend
 
 ## Layout
+Two halves: `front-end/` (React app, deployed to Vercel) and `supabase/` (database + Edge Function, deployed with the Supabase CLI). Shared tooling lives at the repo root.
+
 ```
-bookworm/src/
+.claude/        agents/ (security-reviewer, supabase-agent)
+                skills/ (bookworm-security-check, supabase, supabase-postgres-best-practices,
+                         postgresql-table-design, + design skills)
+.mcp.json       Supabase MCP server (no secrets)
+skills-lock.json  pinned sources for the installed Supabase skills
+front-end/      package.json, vite.config.js, .oxlintrc.json, index.html, public/, vercel.json,
+                .env.example, scripts/ (check-secrets, integration-test), tests/ (Vitest)
+front-end/src/
   pages/        route components (Home, Discover, Search, BookDetails, Login, Signup, Library, Profile, NotFound)
   components/   layout/, books/, library/, logs/, ui/, auth/ (ProtectedRoute, GuestOnlyRoute)
   context/      AuthProvider.jsx + authContext.js (useAuth)
@@ -23,13 +32,14 @@ supabase/
   migrations/   schema, grants, RLS
   functions/books/  index.ts (Deno server) + lib.ts (pure, unit-tested logic)
   tests/rls_security_test.sql  transactional DB security test (rolls back)
+  config.toml   Supabase CLI config — keep migrations/ and functions/ at these paths for the CLI
 ```
 
 ## Architecture conventions
 - Services return data or throw `AppError` (`{ message, status, code }`); pages show loading / empty / error states for every async call.
 - Edge Function contract: `POST { action, ... }` → `{ data }` or `{ error: { code, message } }` with a meaningful HTTP status. Actions: `technology`, `search`, `genre`, `volume`, `volumes`.
 - Google volume ID is the book identifier everywhere (`volume_id`).
-- Genre slugs in `bookworm/src/lib/constants.js` must match `GENRES` in `supabase/functions/books/lib.ts`.
+- Genre slugs in `front-end/src/lib/constants.js` must match `GENRES` in `supabase/functions/books/lib.ts`.
 - Lists use `usePaginatedBooks(fetchPage, key)`: changing `key` resets; load-more appends unique IDs; failures keep loaded books.
 - Render Google descriptions as plain text only (sanitized in the Edge Function). No `dangerouslySetInnerHTML`.
 
@@ -53,7 +63,7 @@ supabase/
 - Every visible control must work. No new dependencies without a clear need.
 - `npm run lint` must report no errors.
 
-## Testing (run from `bookworm/`)
+## Testing (run from `front-end/`)
 - `npm test` — Vitest unit tests (Edge Function logic, pagination hook, API service)
 - `npm run test:secrets` — build + scan bundle and tracked files for secrets / direct Google calls
 - `npm run test:integration` — live checks against deployed Supabase (needs `.env.local`)
@@ -64,7 +74,7 @@ supabase/
 ## Deployment
 - Supabase: `npx supabase db push`, `npx supabase functions deploy books`, `npx supabase secrets set ...` (user runs anything that needs a secret value).
 - Auth: Site URL + redirect URLs must include the Vercel domain and `/login`.
-- Vercel: root `bookworm/`, env `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` rewrites all routes to `index.html`.
+- Vercel: root `front-end/`, env `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` rewrites all routes to `index.html`.
 
 ## Prompt records & hooks (assessment artifacts)
 - Never delete, edit, rewrite or move anything in `prompt-records/`; never disable or modify recording hooks.

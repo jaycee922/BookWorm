@@ -49,8 +49,8 @@ npm run dev                     # http://localhost:5173
 
 | Name | Where | Notes |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | `bookworm/.env.local`, Vercel | Public project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `bookworm/.env.local`, Vercel | Public publishable (or legacy anon) key. `VITE_SUPABASE_ANON_KEY` also accepted |
+| `VITE_SUPABASE_URL` | `front-end/.env.local`, Vercel | Public project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `front-end/.env.local`, Vercel | Public publishable (or legacy anon) key. `VITE_SUPABASE_ANON_KEY` also accepted |
 | `GOOGLE_BOOKS_API_KEY` | Supabase Edge Function secret **only** | Never in `VITE_*`, Vercel, or git |
 | `ALLOWED_ORIGINS` | Supabase Edge Function secret | Comma list of exact origins, e.g. `http://localhost:5173,https://<your-app>.vercel.app`. Wildcards (`https://<prefix>-*.vercel.app`) are supported but anyone can register a matching Vercel name, so prefer exact URLs |
 
@@ -77,7 +77,7 @@ npx supabase functions deploy books
 
 ## Testing
 
-From `bookworm/`:
+From `front-end/`:
 
 ```bash
 npm test                  # Vitest: Edge Function validation/normalization/429/timeout/CORS, pagination hook, API service
@@ -90,12 +90,12 @@ Database security test: run `supabase/tests/rls_security_test.sql` in the Supaba
 
 ## Deploying to Vercel
 
-1. Import the GitHub repo in Vercel, set **Root Directory** to `bookworm` (framework: Vite).
+1. Import the GitHub repo in Vercel, set **Root Directory** to `front-end` (framework: Vite).
 2. Add env vars `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (Production + Preview).
-3. Deploy. `bookworm/vercel.json` rewrites every path to `index.html`, so deep links and refreshes work.
+3. Deploy. `front-end/vercel.json` rewrites every path to `index.html`, so deep links and refreshes work.
 4. Add the Vercel URL to Supabase Auth redirect URLs and to the `ALLOWED_ORIGINS` secret, then redeploy the function's secrets (`npx supabase secrets set ALLOWED_ORIGINS=...`).
 
-CLI alternative: `cd bookworm && npx vercel link && npx vercel env add VITE_SUPABASE_URL && npx vercel env add VITE_SUPABASE_PUBLISHABLE_KEY && npx vercel --prod`.
+CLI alternative: `cd front-end && npx vercel link && npx vercel env add VITE_SUPABASE_URL && npx vercel env add VITE_SUPABASE_PUBLISHABLE_KEY && npx vercel --prod`.
 
 ## Claude Code configuration
 
@@ -117,9 +117,10 @@ CLI alternative: `cd bookworm && npx vercel link && npx vercel env add VITE_SUPA
 ## Project structure
 
 ```
-bookworm/          React app (src/pages, components, context, hooks, services, lib, styles; tests/; scripts/)
+front-end/         React app (src/pages, components, context, hooks, services, lib, styles; tests/; scripts/)
 supabase/          config.toml, migrations/, functions/books/, tests/
-.claude/           agents/security-reviewer.md, skills/bookworm-security-check/ (+ design skills)
+.claude/           agents/ (security-reviewer, supabase-agent), skills/ (bookworm-security-check, Supabase/Postgres and design skills)
 .mcp.json          Supabase MCP server (no secrets)
+skills-lock.json   Pinned sources for the installed Supabase skills
 CLAUDE.md          Project rules for Claude Code
 ```

@@ -19,7 +19,7 @@ Run every step in order and report the real output of each. Never claim a step p
 3. Delegate a full audit to the `security-reviewer` subagent when migrations, the Edge Function, or auth code changed since the last review.
 
 ## 2. Unit tests and bundle secret scan
-From `bookworm/`:
+From `front-end/`:
 ```bash
 npm test                 # Vitest: Edge Function validation/normalization/429/timeouts, pagination hook, API service
 npm run test:secrets     # production build + scan dist/ and tracked files for keys and direct Google calls
@@ -34,7 +34,7 @@ Expected final row: `ALL BOOKWORM DATABASE SECURITY TESTS PASSED`. Any `FAIL:` e
 Also confirm via MCP `get_advisors` (type `security`) that there are no RLS-disabled or exposed-table warnings for BookWorm tables.
 
 ## 4. Live API checks
-From `bookworm/` with `.env.local` present (public URL + publishable key only):
+From `front-end/` with `.env.local` present (public URL + publishable key only):
 ```bash
 npm run test:integration
 ```
