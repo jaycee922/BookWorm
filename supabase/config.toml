@@ -1,0 +1,19 @@
+# Supabase CLI project configuration for BookWorm.
+# Only settings that differ from CLI defaults are listed.
+project_id = "bookworm"
+
+[api]
+schemas = ["public", "graphql_public"]
+
+[auth]
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173/login"]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+# Public read-only Google Books proxy: guests must be able to call it without a
+# user session, and new publishable keys are not JWTs. Inputs are validated in code.
+[functions.books]
+verify_jwt = false
