@@ -14,15 +14,17 @@ const VOLUME_ID_PATTERN = /^[A-Za-z0-9_-]{4,40}$/;
 const ACTIONS = ['technology', 'search', 'genre', 'volume', 'volumes'] as const;
 type Action = (typeof ACTIONS)[number];
 
-// Genres map to Google Books `subject:` searches. `excludeFiction` drops volumes
-// whose categories mark them as fiction, so Non-Fiction never shows novels.
+// Genres map to Google Books `subject:` searches. Google returns zero results for a
+// query made only of operators, so each one leads with a free-text term.
+// `excludeFiction` drops volumes whose categories mark them as fiction, so
+// Non-Fiction never shows novels.
 export const GENRES: Record<string, { label: string; q: string; excludeFiction?: boolean }> = {
-  adventure: { label: 'Adventure', q: 'subject:adventure' },
-  technology: { label: 'Technology', q: 'subject:technology' },
-  horror: { label: 'Horror', q: 'subject:horror' },
-  'sci-fi': { label: 'Sci-Fi', q: 'subject:"science fiction"' },
-  fiction: { label: 'Fiction', q: 'subject:fiction' },
-  'non-fiction': { label: 'Non-Fiction', q: 'subject:nonfiction', excludeFiction: true },
+  adventure: { label: 'Adventure', q: 'adventure subject:adventure' },
+  technology: { label: 'Technology', q: 'technology subject:technology' },
+  horror: { label: 'Horror', q: 'horror subject:horror' },
+  'sci-fi': { label: 'Sci-Fi', q: '"science fiction" subject:"science fiction"' },
+  fiction: { label: 'Fiction', q: 'fiction subject:fiction' },
+  'non-fiction': { label: 'Non-Fiction', q: 'nonfiction subject:nonfiction', excludeFiction: true },
 };
 
 const TECHNOLOGY_QUERY = GENRES.technology.q;
@@ -75,13 +77,19 @@ export function isValidVolumeId(id: unknown): id is string {
 
 export function sanitizeQuery(raw: unknown): string {
   if (typeof raw !== 'string') throw badRequest('query is required.');
-  // Quotes and control characters would break out of the intitle:"..." phrase.
+  // Quotes and control characters would change how Google parses the title query.
   const cleaned = raw.replace(/[\u0000-\u001f\u007f"]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!cleaned) throw badRequest('query must not be empty.');
   if (cleaned.length > MAX_QUERY_LENGTH) {
     throw badRequest(`query must be at most ${MAX_QUERY_LENGTH} characters.`);
   }
   return cleaned;
+}
+
+// Google returns zero results for operator-only queries and for a quoted
+// intitle:"..." phrase, so lead with free text and add one intitle: per word.
+export function titleQuery(query: string): string {
+  return `${query} ${query.split(' ').map((word) => `intitle:${word}`).join(' ')}`;
 }
 
 export function validateRequest(body: unknown): BooksRequest {
@@ -358,7 +366,7 @@ export async function handleBooksRequest(request: BooksRequest, opts: UpstreamOp
     case 'technology':
       return fetchList(TECHNOLOGY_QUERY, request.startIndex, request.maxResults, opts);
     case 'search':
-      return fetchList(`intitle:"${request.query}"`, request.startIndex, request.maxResults, opts, {
+      return fetchList(titleQuery(request.query), request.startIndex, request.maxResults, opts, {
         langRestrict: false,
       });
     case 'genre': {

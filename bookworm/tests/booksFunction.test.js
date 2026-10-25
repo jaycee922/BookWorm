@@ -133,7 +133,7 @@ describe('handleBooksRequest', () => {
     await handleBooksRequest(validateRequest({ action: 'search', query: 'Clean Code' }), { fetchImpl, apiKey: 'k' })
     expect(calls[0].origin).toBe('https://www.googleapis.com')
     expect(calls[0].pathname).toBe('/books/v1/volumes')
-    expect(calls[0].searchParams.get('q')).toBe('intitle:"Clean Code"')
+    expect(calls[0].searchParams.get('q')).toBe('Clean Code intitle:Clean intitle:Code')
     expect(calls[0].searchParams.get('key')).toBe('k')
   })
 
@@ -143,7 +143,8 @@ describe('handleBooksRequest', () => {
       await handleBooksRequest(validateRequest({ action: 'genre', genre }), { fetchImpl })
     }
     expect(calls.map((u) => u.searchParams.get('q'))).toEqual(Object.values(GENRES).map((g) => g.q))
-    expect(calls.every((u) => u.searchParams.get('q').startsWith('subject:'))).toBe(true)
+    // Google returns nothing for operator-only queries, so each needs free text before subject:.
+    expect(calls.every((u) => /^\S.* subject:/.test(u.searchParams.get('q')))).toBe(true)
   })
 
   it('paginates with startIndex/maxResults and reports hasMore', async () => {
