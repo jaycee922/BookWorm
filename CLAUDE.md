@@ -77,6 +77,8 @@ supabase/
 - Vercel: root `front-end/`, env `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` rewrites all routes to `index.html`.
 
 ## Prompt records & hooks (assessment artifacts)
-- Never delete, edit, rewrite or move anything in `prompt-records/`; never disable or modify recording hooks.
-- Commit `prompt-records/` unmodified with the project.
+- Two hooks run automatically: one writes each user prompt into `prompt-records/`; the other appends the context window status to those records after Claude Code acts.
+- Never edit, disable, delete, rewrite or move the hooks or anything in `prompt-records/`. Tampering is an automatic fail.
+- Commit `prompt-records/` unmodified with the project; it is a required deliverable. Never add it to `.gitignore`.
+- Never paste secrets into a prompt: records are submitted with the repo, so a key typed into a prompt is a leaked key.
 - Workflow: DEFINE → EXPLORE → PLAN → CODE → REVIEW → COMMIT. Keep decisions here, not transcripts.

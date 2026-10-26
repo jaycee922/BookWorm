@@ -144,6 +144,19 @@ CLI alternative: `cd front-end && npx vercel link && npx vercel env add VITE_SUP
 
 **Why the Supabase MCP server:** it lets Claude Code list tables and migrations, apply migrations, run the transactional RLS test (`execute_sql`), read security advisors, deploy/inspect Edge Functions, and read function logs — directly against the project the app uses. It authenticates with **OAuth in the browser** (run `/mcp` in Claude Code and choose *supabase* → Authenticate), so no access token is stored in the repository.
 
+## Prompt records & hooks
+
+The project includes Claude Code hooks that run automatically while you work:
+
+- One hook writes each prompt you send into the `prompt-records/` directory.
+- Another hook appends your context window status to those records after Claude Code acts.
+
+Rules:
+
+- **Do not edit, disable, delete, or rewrite the hooks or the records.** Tampering is an automatic fail.
+- **Commit `prompt-records/` with your submission.** It is part of the deliverables.
+- **Never paste secrets into a prompt.** The records are submitted with the repository, so a key typed into a prompt is a leaked key. Put secret values only in git-ignored files (`supabase/functions/.env`, `front-end/.env.local`) or set them in your own terminal.
+
 ## Security notes
 
 - The browser never contacts Google Books; `npm run test:secrets` fails the build check if `googleapis.com/books` or any API key appears in the bundle.
