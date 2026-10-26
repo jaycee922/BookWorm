@@ -46,6 +46,9 @@ export async function fromFunctionsError(error) {
       retryAfter: response.headers?.get?.('retry-after') ?? null,
     })
   }
+  // No HTTP response: offline, or the browser blocked the call. A blocked CORS preflight
+  // usually means this site's origin is missing from the function's ALLOWED_ORIGINS secret.
+  console.error(`Book service request failed before a response (origin ${globalThis.location?.origin}).`, error)
   return new AppError('Could not reach the book service. Check your connection and try again.', {
     code: 'NETWORK_ERROR',
   })
