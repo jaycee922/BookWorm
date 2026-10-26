@@ -36,44 +36,80 @@ Browser (React SPA on Vercel)
 
 ## Local setup
 
-Prerequisites: Node 20+, a Supabase project, a Google Books API key (Google Cloud Console → enable *Books API* → create API key).
+### Prerequisites
+
+- **Node.js `^20.19` or `>=22.12`** (required by Vite 8)
+- A **Supabase project** (free tier is fine). The Supabase CLI runs through `npx`, so you don't need a global install
+- A **Google Books API key**: Google Cloud Console → *APIs & Services* → enable **Books API** → *Credentials* → **Create API key** (optionally restrict it to the Books API)
+
+The frontend runs locally but talks to your **hosted** Supabase project. The database and the `books` Edge Function have to be set up before `npm run dev` will show any books.
+
+### 1. Clone and install
 
 ```bash
-git clone <your-repo-url> bookworm && cd bookworm
-cd bookworm && npm install
-cp .env.example .env.local      # then fill in the two public values
-npm run dev                     # http://localhost:5173
+git clone <your-repo-url> bookworm
+cd bookworm/front-end
+npm install
 ```
 
-### Environment variables
+### 2. Set up Supabase (database, secrets, Edge Function)
 
-| Name | Where | Notes |
-| --- | --- | --- |
-| `VITE_SUPABASE_URL` | `front-end/.env.local`, Vercel | Public project URL |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `front-end/.env.local`, Vercel | Public publishable (or legacy anon) key. `VITE_SUPABASE_ANON_KEY` also accepted |
-| `GOOGLE_BOOKS_API_KEY` | Supabase Edge Function secret **only** | Never in `VITE_*`, Vercel, or git |
-| `ALLOWED_ORIGINS` | Supabase Edge Function secret | Comma list of exact origins, e.g. `http://localhost:5173,https://<your-app>.vercel.app`. Wildcards (`https://<prefix>-*.vercel.app`) are supported but anyone can register a matching Vercel name, so prefer exact URLs |
-
-## Supabase configuration
+Run these from the repo root (`bookworm/`):
 
 ```bash
 npx supabase login
-npx supabase link --project-ref <project-ref>
+npx supabase link --project-ref <project-ref>     # Dashboard → Project Settings → General
 
-# 1. Database schema + RLS
+# Database schema + RLS (supabase/migrations)
 npx supabase db push
 
-# 2. Edge Function secrets (enter values in your own terminal, never in chat or git)
-cp supabase/functions/.env.example supabase/functions/.env   # edit locally
+# Edge Function secrets: type the real values into the file in your own editor, never in chat or git
+cp supabase/functions/.env.example supabase/functions/.env
 npx supabase secrets set --env-file supabase/functions/.env
 
-# 3. Deploy the Edge Function (verify_jwt=false comes from supabase/config.toml)
+# Deploy the function (verify_jwt = false comes from supabase/config.toml)
 npx supabase functions deploy books
 ```
 
-**Authentication setup** (Dashboard → Authentication):
-- Providers → Email: enabled. Choose whether *Confirm email* is on; the app handles both (shows "check your inbox" when confirmation is required).
-- URL Configuration → Site URL: your Vercel URL. Redirect URLs: `http://localhost:5173/login`, `https://<your-app>.vercel.app/login`.
+**Authentication** (Dashboard → Authentication):
+- *Sign In / Providers → Email*: enabled. *Confirm email* can be on or off; the app handles both and shows "check your inbox" when confirmation is required.
+- *URL Configuration*: set **Site URL** to `http://localhost:5173` while developing (change it to your Vercel URL later). Add **Redirect URLs** `http://localhost:5173/login` and `https://<your-app>.vercel.app/login`.
+
+### 3. Configure and run the frontend
+
+```bash
+cd front-end
+cp .env.example .env.local      # fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+npm run dev                     # http://localhost:5173
+```
+
+Both values are in Dashboard → *Project Settings → API Keys / Data API*.
+
+**Troubleshooting:** if books don't load and the browser console shows a CORS error from `functions/v1/books`, the page's exact origin (`http://localhost:5173`, with no trailing slash) is missing from `ALLOWED_ORIGINS`. Fix the value, re-run `npx supabase secrets set --env-file supabase/functions/.env`, and reload. You can see blocked origins in Dashboard → *Edge Functions → books → Logs*.
+
+### Optional: run the Edge Function locally
+
+This needs Docker for the local Supabase stack:
+
+```bash
+npx supabase start                                                   # local Postgres/Auth/API; prints a local URL + publishable key
+npx supabase functions serve books --env-file supabase/functions/.env
+```
+
+Then point `front-end/.env.local` at the local URL and key that `supabase start` printed.
+
+## Secrets & environment variables
+
+| Name | Secret? | Where it goes | Notes |
+| --- | --- | --- | --- |
+| `VITE_SUPABASE_URL` | No (public) | `front-end/.env.local`, Vercel env | Your project URL, `https://<project-ref>.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | No (public) | `front-end/.env.local`, Vercel env | Publishable key (`sb_publishable_…`) or the legacy anon key. `VITE_SUPABASE_ANON_KEY` also works. RLS is what protects the data |
+| `GOOGLE_BOOKS_API_KEY` | **Yes** | Supabase Edge Function secret **only** (`supabase/functions/.env`, then `supabase secrets set`) | Never put it in a `VITE_*` variable, in Vercel, or in git. Anything prefixed `VITE_` is shipped to the browser |
+| `ALLOWED_ORIGINS` | Config | Supabase Edge Function secret | Comma-separated list of exact origins, e.g. `http://localhost:5173,https://<your-app>.vercel.app`. Wildcards (`https://<prefix>-*.vercel.app`) are supported, but anyone can register a matching Vercel name, so prefer exact URLs |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Automatic | Injected into Edge Functions by Supabase | Don't set these yourself. The function uses them to check the signed-in user on batch `volumes` lookups |
+| `TEST_USER_A_EMAIL` / `_PASSWORD`, `TEST_USER_B_EMAIL` / `_PASSWORD` | **Yes** (test only) | `front-end/.env.local` | Optional. Two confirmed throwaway accounts for the cross-user checks in `npm run test:integration` |
+
+The app **never** needs the Supabase service-role/secret key or a database password. `.env`, `.env.*` (except `.env.example`) and `supabase/functions/.env` are git-ignored.
 
 ## Testing
 
